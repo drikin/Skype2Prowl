@@ -49,7 +49,7 @@ def OnMessageStatus(Message, Status):
     if( time - lastTime > deltaTime):
       topic       = Message.Chat.Topic[:20]
       displayName = Message.FromDisplayName
-      if( not topic ):
+      if( topic == '(null)' ):
         topic = displayName
       
       if Status == 'RECEIVED' and displayName != OWN_DISPLAY_NAME:
@@ -80,7 +80,7 @@ def main(argv=None):
     argv = sys.argv
   try:
     try:
-      opts, args = getopt.getopt(argv[1:], "hu:k:v", ["help", "user", "api_key"])
+      opts, args = getopt.getopt(argv[1:], "hu:k:i:v", ["help", "user=", "api_key=", "interval="])
     except getopt.error, msg:
       raise Usage(msg)
     
@@ -97,6 +97,9 @@ def main(argv=None):
       if option in ("-k", "--api_key"):
         global PROWL_API_KEY
         PROWL_API_KEY = value
+      if option in ("-i", "--interval"):
+        global deltaTime
+        deltaTime = datetime.timedelta(seconds=int(value))
   
   except Usage, err:
     print >> sys.stderr, sys.argv[0].split("/")[-1] + ": " + str(err.msg)
@@ -108,6 +111,7 @@ def main(argv=None):
   print('******************************************************************************');
   print 'Username      : ' + OWN_DISPLAY_NAME
   print 'Prowl API Key : ' + PROWL_API_KEY
+  print 'Interval(sec) : ' + str(deltaTime.seconds)
   print 'Encodeing     : ' + sys.getdefaultencoding()
   print 'Connecting to Skype..'
   
