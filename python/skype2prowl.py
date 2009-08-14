@@ -9,6 +9,7 @@ Copyright (c) 2009 drikin.com. All rights reserved.
 
 import sys
 import os
+import time
 import getopt
 import datetime
 import Skype4Py
@@ -51,7 +52,7 @@ def OnMessageStatus(Message, Status):
       displayName = Message.FromDisplayName
       if( topic == '(null)' ):
         topic = displayName
-      
+
       if Status == 'RECEIVED' and displayName != OWN_DISPLAY_NAME:
         message = displayName + ': ' + Message.Body
         sendNotification('Skype', topic, message)
@@ -121,11 +122,9 @@ def main(argv=None):
 
   
   # ----------------------------------------------------------------------------------------------------
-  # Looping until user types 'exit'
-  Cmd = '';
-  while not Cmd == 'exit':
-    pass
-    Cmd = raw_input('');
+  # Looping
+  while 1:
+    time.sleep(0.1)
 
 if __name__ == '__main__':
   main()
