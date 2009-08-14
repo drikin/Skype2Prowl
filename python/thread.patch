@@ -1,0 +1,74 @@
+*** ./Skype4Py.orig/API/darwin.py       2009-06-09 08:21:13.000000000 -0400
+--- ./Skype4Py/API/darwin.py    2009-06-09 08:09:56.000000000 -0400
+***************
+*** 331,336 ****
+--- 331,337 ----
+          self.center = self.coref.CFDistributedNotificationCenter()
+          self.is_available = False
+          self.client_id = -1
++         self.thread_started = False
+  
+      def run(self):
+          self.DebugPrint('thread started')
+***************
+*** 357,366 ****
+      def Attach(self, Timeout=30000, Wait=True):
+          if self.AttachmentStatus in (apiAttachPendingAuthorization, apiAttachSuccess):
+              return
+!         try:
+!             self.start()
+!         except AssertionError:
+!             pass
+          t = threading.Timer(Timeout / 1000.0, self.__Attach_ftimeout)
+          try:
+              self.init_observer()
+--- 358,364 ----
+      def Attach(self, Timeout=30000, Wait=True):
+          if self.AttachmentStatus in (apiAttachPendingAuthorization, apiAttachSuccess):
+              return
+!         self.start()
+          t = threading.Timer(Timeout / 1000.0, self.__Attach_ftimeout)
+          try:
+              self.init_observer()
+***************
+*** 380,395 ****
+          self.SendCommand(ICommand(-1, 'PROTOCOL %s' % self.Protocol))
+  
+      def IsRunning(self):
+!         try:
+!             self.start()
+!         except AssertionError:
+!             pass
+          self.init_observer()
+          self.is_available = False
+          self.post('SKSkypeAPIAvailabilityRequest')
+          time.sleep(1.0)
+          return self.is_available
+  
+      def Start(self, Minimized=False, Nosplash=False):
+          if not self.IsRunning():
+              from subprocess import Popen
+--- 378,400 ----
+          self.SendCommand(ICommand(-1, 'PROTOCOL %s' % self.Protocol))
+  
+      def IsRunning(self):
+!         self.start()
+          self.init_observer()
+          self.is_available = False
+          self.post('SKSkypeAPIAvailabilityRequest')
+          time.sleep(1.0)
+          return self.is_available
+  
++     def start(self):
++         """
++         Start the thread associated with this API object.
++         Ensure that the call is made no more than once,
++         to avoid raising a RuntimeError.
++         """
++         if not self.thread_started:
++             super(_ISkypeAPI, self).start()
++             self.thread_started = True
++ 
+      def Start(self, Minimized=False, Nosplash=False):
+          if not self.IsRunning():
+              from subprocess import Popen
