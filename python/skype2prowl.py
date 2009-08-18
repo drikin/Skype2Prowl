@@ -10,6 +10,7 @@ Copyright (c) 2009 drikin.com. All rights reserved.
 import sys
 import os
 import time
+import codecs
 import getopt
 import datetime
 import Skype4Py
@@ -43,6 +44,12 @@ def OnAttach(status):
   if status == Skype4Py.apiAttachSuccess:
     print('******************************************************************************');
 
+def OnCall(call, status):
+  if status == 'RINGING':
+    displayName = call.PartnerDisplayName
+    message = u"You received a call from " + displayName + u"."
+    sendNotification('Skype', displayName, message)
+  
 def OnMessageStatus(Message, Status):
   global lastTime
   if Status == 'RECEIVED' or Status == 'SENT':
@@ -109,6 +116,7 @@ def main(argv=None):
   
   skype.OnAttachmentStatus  = OnAttach;
   skype.OnMessageStatus     = OnMessageStatus;
+  skype.OnCallStatus        = OnCall;
   print('******************************************************************************');
   print 'Username      : ' + OWN_DISPLAY_NAME
   print 'Prowl API Key : ' + PROWL_API_KEY
@@ -116,7 +124,7 @@ def main(argv=None):
   print 'Encodeing     : ' + sys.getdefaultencoding()
   print 'Connecting to Skype..'
   
-  skype.Attach();
+  skype.Attach(Wait=False);
   global prowl
   prowl = prowlpy.Prowl(PROWL_API_KEY)
 
