@@ -15,12 +15,16 @@ import getopt
 import datetime
 import Skype4Py
 import prowlpy
+import pyRijndael
+import base64
+import urllib
 
 # force utf-8 to workaround unicode problem
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
-PROWL_API_KEY     = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+PROWL_API_KEY     = ""
+ENCRYPT_KEY       = ""
 OWN_DISPLAY_NAME  = ""
 lastTime          = datetime.datetime.now()
 deltaTime         = datetime.timedelta(minutes=1)
@@ -29,9 +33,42 @@ deltaTime         = datetime.timedelta(minutes=1)
 skype       = Skype4Py.Skype()
 
 verbose     = False
+isDebug     = False
 help_message = '''
 The help message goes here.
 '''
+
+def encryptText(text):
+  s = pyRijndael.EncryptData(ENCRYPT_KEY, text.encode('utf-8'))
+  return base64.b64encode(s)
+  
+def decryptText(text):
+  data = base64.b64decode(text)
+  d = pyRijndael.DecryptData(ENCRYPT_KEY, data)
+  return d
+
+def uploadMessageToGAE(Message, Status):
+  postdata = {}
+  postdata['status']          = Status
+  postdata['id']              = Message.Id
+  postdata['user']            = OWN_DISPLAY_NAME
+  postdata['fromdisplayname'] = Message.FromDisplayName.encode('utf-8')
+  postdata['fromhandle']      = Message.FromHandle.encode('utf-8')
+  postdata['chatname']        = Message.ChatName.encode('utf-8')
+  postdata['body']            = encryptText(Message.Body)
+  postdata['datetime']        = Message.Datetime
+  topic = Message.Chat.Topic
+  if( topic == '(null)' ):
+    topic = None
+  else :
+    postdata['topic']         = topic.encode('utf-8')
+  
+  params = urllib.urlencode(postdata)
+  if (isDebug):
+    up = urllib.urlopen("http://127.0.0.1:8080/api/skype/putchatmessage", params)
+  else:
+    up = urllib.urlopen("http://labs.drikin.com/api/skype/putchatmessage", params)
+  # print up.read()
 
 # ----------------------------------------------------------------------------------------------------
 # Fired on attachment status change. Here used to re-attach this script to Skype in case attachment is lost. Just in case.
@@ -53,11 +90,14 @@ def OnCall(call, status):
 def OnMessageStatus(Message, Status):
   global lastTime
   if Status == 'RECEIVED' or Status == 'SENT':
+    if (ENCRYPT_KEY != ''):
+      uploadMessageToGAE(Message, Status)
+    
     time        = Message.Datetime
-    if( time - lastTime > deltaTime):
+    if (time - lastTime > deltaTime):
       topic       = Message.Chat.Topic[:20]
       displayName = Message.FromDisplayName
-      if( topic == '(null)' ):
+      if (topic == '(null)'):
         topic = displayName
 
       if Status == 'RECEIVED' and displayName != OWN_DISPLAY_NAME:
@@ -70,10 +110,10 @@ def OnMessageStatus(Message, Status):
     lastTime = time
 
 def sendNotification(appname, event, description):
-  if( not PROWL_API_KEY ):
+  if (PROWL_API_KEY != ''):
     return
   try:
-    if( verbose ):
+    if (verbose):
       print appname + ' ' + event + ': ' + description
     prowl.add(unicode(appname).encode('utf8'), unicode(event).encode('utf8'), unicode(description).encode('utf8'))
   except Exception,msg:
@@ -88,7 +128,7 @@ def main(argv=None):
     argv = sys.argv
   try:
     try:
-      opts, args = getopt.getopt(argv[1:], "hu:k:i:v", ["help", "user=", "api_key=", "interval="])
+      opts, args = getopt.getopt(argv[1:], "hu:k:i:p:vd", ["help", "user=", "api_key=", "password=", "interval="])
     except getopt.error, msg:
       raise Usage(msg)
     
@@ -97,6 +137,9 @@ def main(argv=None):
       if option == "-v":
         global verbose
         verbose = True
+      if option == "-d":
+        global isDebug
+        isDebug = True
       if option in ("-h", "--help"):
         raise Usage(help_message)
       if option in ("-u", "--user"):
@@ -105,6 +148,9 @@ def main(argv=None):
       if option in ("-k", "--api_key"):
         global PROWL_API_KEY
         PROWL_API_KEY = value
+      if option in ("-p", "--password"):
+        global ENCRYPT_KEY
+        ENCRYPT_KEY = value
       if option in ("-i", "--interval"):
         global deltaTime
         deltaTime = datetime.timedelta(seconds=int(value))
@@ -120,8 +166,11 @@ def main(argv=None):
   print('******************************************************************************');
   print 'Username      : ' + OWN_DISPLAY_NAME
   print 'Prowl API Key : ' + PROWL_API_KEY
+  print 'Encrypt Key   : ' + ENCRYPT_KEY
   print 'Interval(sec) : ' + str(deltaTime.seconds)
   print 'Encodeing     : ' + sys.getdefaultencoding()
+  print 'Verbose mode  : ' + str(verbose)
+  print 'Debug mode    : ' + str(isDebug)
   print 'Connecting to Skype..'
   
   skype.Attach(Wait=False);
