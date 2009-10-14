@@ -55,14 +55,14 @@ def uploadMessageToGAE(Message, Status):
   postdata['fromdisplayname'] = Message.FromDisplayName.encode('utf-8')
   postdata['fromhandle']      = Message.FromHandle.encode('utf-8')
   postdata['chatname']        = Message.ChatName.encode('utf-8')
-  postdata['body']            = encryptText(Message.Body)
+  postdata['body']            = encryptText(Message.Body.encode('utf-8'))
   postdata['datetime']        = Message.Datetime
   topic = Message.Chat.Topic
   if( topic == '(null)' ):
     topic = None
   else :
     postdata['topic']         = topic.encode('utf-8')
-  
+    
   params = urllib.urlencode(postdata)
   if (isDebug):
     up = urllib.urlopen("http://127.0.0.1:8080/api/skype/putchatmessage", params)
